@@ -3,28 +3,34 @@ project(Pyramid)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Inclui headers locais (ex: para glad e glm)
+# Diretório dos headers (GLAD, GLM)
 include_directories(include)
 
-# Encontra GLFW via pkg-config
+# GLAD está em src/gl.c
+add_library(glad STATIC src/gl.c)
+
+# Encontra GLFW via pkg-config (Linux)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLFW REQUIRED glfw3)
 
-# Adiciona executável e fontes
-add_executable(Pyramid
-    src/main.cpp 
-    src/gl.c           # glad core profile gerado
-)
+# Executável principal
+add_executable(Pyramid src/main.cpp)
 
-# Inclui diretórios (GLFW + headers locais + GLM)
-target_include_directories(Pyramid PRIVATE 
+# Inclui headers do GLFW e da pasta local
+target_include_directories(Pyramid PRIVATE
     ${GLFW_INCLUDE_DIRS}
-    include           # para glad e glm headers
+    include
 )
 
-# Linka bibliotecas GLFW, dl (Linux), m (math)
+# Linka GLAD, GLFW e outras libs
 target_link_libraries(Pyramid
+    glad
     ${GLFW_LIBRARIES}
-    dl
     m
+    dl
 )
+
+# No Windows, linka OpenGL manualmente
+if (WIN32)
+    target_link_libraries(Pyramid opengl32)
+endif()

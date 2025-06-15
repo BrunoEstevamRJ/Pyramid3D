@@ -15,6 +15,70 @@
 
 #define WINDOW_TITLE "Pyramid"
 
+
+float lastX = 0.0f, lastY = 0.0f;
+float yaw = 0.0f, pitch = 0.0f;
+bool firstMouse = true;
+bool isDragging = false;
+
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            isDragging = true;
+            firstMouse = true;
+        } else if (action == GLFW_RELEASE) {
+            isDragging = false;
+        }
+    }
+}
+
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (!isDragging) return;
+
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+        return;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // y é invertido: mover pra cima deve aumentar o pitch
+
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.2f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    // Limita a inclinação vertical
+    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
+}
+
+/*
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (!isDragging) return;
+
+    if (firstMouse) {
+        lastX = xpos;
+        firstMouse = false;
+        return;
+    }
+
+    float xoffset = xpos - lastX;
+    lastX = xpos;
+
+    float sensitivity = 0.1f; // Ajuste de sensibilidade
+    yaw += xoffset * sensitivity;
+}
+*/
+
 const char* vertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -149,15 +213,24 @@ int main() {
     CreateMesh();
     GLuint shaderProgram = CreateShaderProgram();
 
+
+
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+
+
+
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.1f, 0.1f, 0.2f, 1.0f); 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
 
-        glm::mat4 model = glm::rotate(glm::mat4(1.0f),
-                                      (float)glfwGetTime(),
-                                      glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::rotate(model, glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f)); // rotação vertical
+   		model = glm::rotate(model, glm::radians(yaw),   glm::vec3(0.0f, 1.0f, 0.0f)); // rotação horizontal
+
+
 
         glm::mat4 view = glm::translate(glm::mat4(1.0f),
                                         glm::vec3(0.0f, -0.2f, -2.5f));

@@ -13,14 +13,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#define WINDOW_TITLE "Pyramid"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
+#define WINDOW_TITLE "Pyramid"
 
 float lastX = 0.0f, lastY = 0.0f;
 float yaw = 0.0f, pitch = 0.0f;
 bool firstMouse = true;
 bool isDragging = false;
-
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -44,7 +45,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     }
 
     float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // y é invertido: mover pra cima deve aumentar o pitch
+    float yoffset = lastY - ypos; /*---[ y é invertido: mover pra cima deve aumentar o pitch ]---*/
 
     lastX = xpos;
     lastY = ypos;
@@ -56,28 +57,10 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     yaw += xoffset;
     pitch += yoffset;
 
-    // Limita a inclinação vertical
+    /**//*--[ Limita a inclinação vertical ]--*//**/
     if (pitch > 89.0f) pitch = 89.0f;
     if (pitch < -89.0f) pitch = -89.0f;
 }
-
-/*
-void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
-    if (!isDragging) return;
-
-    if (firstMouse) {
-        lastX = xpos;
-        firstMouse = false;
-        return;
-    }
-
-    float xoffset = xpos - lastX;
-    lastX = xpos;
-
-    float sensitivity = 0.1f; // Ajuste de sensibilidade
-    yaw += xoffset * sensitivity;
-}
-*/
 
 const char* vertexShaderSource = R"(
 #version 330 core
@@ -107,28 +90,31 @@ in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoord;
 
+uniform sampler2D texture1;
 out vec4 FragColor;
 
-void main() {
-    FragColor = vec4(1.0, 0.5, 0.2, 1.0);  
+void main() {    
+    FragColor = texture(texture1, TexCoord);
 }
 )";
 
 float verts[] = {
-
-    
+    // Front face
     -0.5f, -0.5f, -0.5f,  0, 0, -1,  0, 0,
      0.5f, -0.5f, -0.5f,  0, 0, -1,  1, 0,
      0.0f,  0.5f,  0.0f,  0, 0, -1,  0.5, 1,
 
+    // Back face
     -0.5f, -0.5f,  0.5f,  0, 0, 1,   0, 0,
      0.5f, -0.5f,  0.5f,  0, 0, 1,   1, 0,
      0.0f,  0.5f,  0.0f,  0, 0, 1,   0.5, 1,
 
+    // Left face
     -0.5f, -0.5f, -0.5f, -1, 0, 0,   0, 1,
     -0.5f, -0.5f,  0.5f, -1, 0, 0,   0, 0,
      0.0f,  0.5f,  0.0f, -1, 0, 0,   0.5, 1,
 
+    // Right face
      0.5f, -0.5f, -0.5f,  1, 0, 0,   0, 1,
      0.5f, -0.5f,  0.5f,  1, 0, 0,   0, 0,
      0.0f,  0.5f,  0.0f,  1, 0, 0,   0.5, 1,
@@ -146,12 +132,13 @@ void CreateMesh() {
 
     const GLuint stride = sizeof(float) * 8;
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0); 
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
 
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float))); 
     glEnableVertexAttribArray(1);
 
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 }
 
@@ -208,17 +195,35 @@ int main() {
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
 
-    glEnable(GL_DEPTH_TEST); 
-
-    CreateMesh();
-    GLuint shaderProgram = CreateShaderProgram();
-
-
-
+    /*--[ Register Mouse allbacks ]--*/
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
 
+    glEnable(GL_DEPTH_TEST); 
 
+    /*--[ Wrapping e filtering ]--*/
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    /*--[ Carregar Imagem ]--*/
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load("wall.jpg", &width, &height, &nrChannels, 0);
+    if (!data) {
+        std::cerr << "Erro ao carregar imagem wall.jpg\n";
+        return -1;
+    }
+    glTexImage2D(GL_TEXTURE_2D, 0, (nrChannels == 4 ? GL_RGBA : GL_RGB), width, height, 0,
+                 (nrChannels == 4 ? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(data);
+
+    GLuint shaderProgram = CreateShaderProgram();
+    CreateMesh();
 
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.1f, 0.1f, 0.2f, 1.0f); 
@@ -227,10 +232,8 @@ int main() {
         glUseProgram(shaderProgram);
 
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f)); // rotação vertical
-   		model = glm::rotate(model, glm::radians(yaw),   glm::vec3(0.0f, 1.0f, 0.0f)); // rotação horizontal
-
-
+        model = glm::rotate(model, glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f)); /*--[ Rotação Vertical ]--*/
+        model = glm::rotate(model, glm::radians(yaw),   glm::vec3(0.0f, 1.0f, 0.0f)); /*--[ Rotação Horizontal ]--*/
 
         glm::mat4 view = glm::translate(glm::mat4(1.0f),
                                         glm::vec3(0.0f, -0.2f, -2.5f));
@@ -245,6 +248,11 @@ int main() {
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
         glBindVertexArray(vao);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 0);
+
         glDrawArrays(GL_TRIANGLES, 0, 12); 
 
         glfwSwapBuffers(window);

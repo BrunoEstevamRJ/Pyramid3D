@@ -120,7 +120,19 @@ float verts[] = {
      0.0f,  0.5f,  0.0f,  1, 0, 0,   0.5, 1,
 };
 
-GLuint vao, vbo;
+float baseVerts[] = {
+    // Primeiro triângulo
+    -0.5f, -0.5f, -0.5f,  0, -1, 0,  0.0f, 0.0f, 
+     0.5f, -0.5f, -0.5f,  0, -1, 0,  1.0f, 0.0f, 
+     0.5f, -0.5f,  0.5f,  0, -1, 0,  1.0f, 1.0f, 
+
+    // Segundo triângulo
+    -0.5f, -0.5f, -0.5f,  0, -1, 0,  0.0f, 0.0f, 
+     0.5f, -0.5f,  0.5f,  0, -1, 0,  1.0f, 1.0f, 
+    -0.5f, -0.5f,  0.5f,  0, -1, 0,  0.0f, 1.0f  
+};
+
+GLuint vao, vbo, baseVao, baseVbo;
 
 void CreateMesh() {
     glGenVertexArrays(1, &vao);
@@ -129,6 +141,7 @@ void CreateMesh() {
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(baseVerts), baseVerts, GL_STATIC_DRAW);
 
     const GLuint stride = sizeof(float) * 8;
 
@@ -140,6 +153,25 @@ void CreateMesh() {
 
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
+
+    /*--[ Pyramid Base ]--*/
+    glGenVertexArrays(1, &baseVao);
+    glGenBuffers(1, &baseVbo);
+
+    glBindVertexArray(baseVao);
+    glBindBuffer(GL_ARRAY_BUFFER, baseVbo);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(baseVerts), baseVerts, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0); /*--[ Desvincular VAO ]--*/
 }
 
 GLuint CompileShader(GLenum type, const char* src) {
@@ -254,6 +286,10 @@ int main() {
         glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 0);
 
         glDrawArrays(GL_TRIANGLES, 0, 12); 
+
+        glBindVertexArray(baseVao);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

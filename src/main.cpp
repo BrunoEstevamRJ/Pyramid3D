@@ -55,7 +55,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     yoffset *= sensitivity;
 
     yaw += xoffset;
-    pitch += yoffset;
+    pitch -= yoffset;
 
     /**//*--[ Limita a inclinação vertical ]--*//**/
     if (pitch > 89.0f) pitch = 89.0f;
@@ -110,13 +110,13 @@ float verts[] = {
      0.0f,  0.5f,  0.0f,  0, 0, 1,   0.5, 1,
 
     // Left face
-    -0.5f, -0.5f, -0.5f, -1, 0, 0,   0, 1,
-    -0.5f, -0.5f,  0.5f, -1, 0, 0,   0, 0,
+    -0.5f, -0.5f, -0.5f, -1, 0, 0,   0, 0,
+    -0.5f, -0.5f,  0.5f, -1, 0, 0,   1, 0,
      0.0f,  0.5f,  0.0f, -1, 0, 0,   0.5, 1,
 
     // Right face
-     0.5f, -0.5f, -0.5f,  1, 0, 0,   0, 1,
-     0.5f, -0.5f,  0.5f,  1, 0, 0,   0, 0,
+     0.5f, -0.5f, -0.5f,  1, 0, 0,   0, 0,
+     0.5f, -0.5f,  0.5f,  1, 0, 0,   1, 0,
      0.0f,  0.5f,  0.0f,  1, 0, 0,   0.5, 1,
 };
 
